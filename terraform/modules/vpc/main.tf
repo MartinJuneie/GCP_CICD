@@ -1,6 +1,7 @@
 locals {
   vpc_name            = "vpc-${var.project_id}"
-  subnet_name         = "sbn-${var.region_short}-${var.project_id}-gke"
+  public_subnet_name  = "sbn-${var.region_short}-${var.project_id}-public"
+  private_subnet_name = "sbn-${var.region_short}-${var.project_id}-private-gke"
   pods_range_name     = "rn-pods-${var.region_short}-${var.environment}"
   services_range_name = "rn-services-${var.region_short}-${var.environment}"
   router_name         = "cr-${var.region_short}-${var.environment}-nat"
@@ -15,9 +16,19 @@ resource "google_compute_network" "vpc_network" {
   project                 = var.project_id
 }
 
-resource "google_compute_subnetwork" "gke_subnet" {
-  name                     = local.subnet_name
-  ip_cidr_range            = var.subnet_cidr
+# Public subnet
+resource "google_compute_subnetwork" "public_subnet" {
+  name          = local.public_subnet_name
+  ip_cidr_range = var.public_subnet_cidr
+  region        = var.region
+  network       = google_compute_network.vpc_network.id
+  project       = var.project_id
+}
+
+# Private subnet for GKE
+resource "google_compute_subnetwork" "private_subnet" {
+  name                     = local.private_subnet_name
+  ip_cidr_range            = var.private_subnet_cidr
   region                   = var.region
   network                  = google_compute_network.vpc_network.id
   project                  = var.project_id
@@ -34,6 +45,7 @@ resource "google_compute_subnetwork" "gke_subnet" {
   }
 }
 
+# Cloud NAT for private egress
 resource "google_compute_router" "nat_router" {
   name    = local.router_name
   region  = var.region
@@ -55,7 +67,7 @@ resource "google_compute_router_nat" "nat_gateway" {
   }
 }
 
-# Firewall rule: Allow internal traffic within VPC
+# Allow internal traffic
 resource "google_compute_firewall" "allow_internal" {
   name    = local.fw_internal_name
   network = google_compute_network.vpc_network.name
@@ -72,13 +84,14 @@ resource "google_compute_firewall" "allow_internal" {
   }
 
   source_ranges = [
-    var.subnet_cidr,
+    var.public_subnet_cidr,
+    var.private_subnet_cidr,
     var.pods_cidr,
     var.services_cidr,
   ]
 }
 
-# Firewall rule: Allow Google Load Balancer health checks
+# Allow Google health checks
 resource "google_compute_firewall" "allow_glbc_health_checks" {
   name    = local.fw_glbc_name
   network = google_compute_network.vpc_network.name

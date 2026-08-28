@@ -18,8 +18,13 @@ variable "environment" {
   type        = string
 }
 
-variable "subnet_cidr" {
-  description = "Primary CIDR block for GKE nodes subnet"
+variable "public_subnet_cidr" {
+  description = "Primary CIDR block for the public subnetwork"
+  type        = string
+}
+
+variable "private_subnet_cidr" {
+  description = "Primary CIDR block for GKE worker nodes private subnetwork"
   type        = string
 }
 

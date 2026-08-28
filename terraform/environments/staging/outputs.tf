@@ -13,14 +13,24 @@ output "vpc_network_self_link" {
   value       = module.vpc.network_self_link
 }
 
-output "gke_subnet_name" {
-  description = "The name of the subnetwork hosting GKE nodes"
-  value       = module.vpc.subnet_name
+output "public_subnet_name" {
+  description = "The name of the public subnetwork"
+  value       = module.vpc.public_subnet_name
 }
 
-output "gke_subnet_cidr" {
-  description = "Primary CIDR block for GKE worker nodes"
-  value       = module.vpc.subnet_cidr
+output "public_subnet_cidr" {
+  description = "The CIDR block for the public subnetwork"
+  value       = module.vpc.public_subnet_cidr
+}
+
+output "private_subnet_name" {
+  description = "The name of the private subnetwork hosting GKE nodes"
+  value       = module.vpc.private_subnet_name
+}
+
+output "private_subnet_cidr" {
+  description = "Primary CIDR block for GKE worker nodes private subnetwork"
+  value       = module.vpc.private_subnet_cidr
 }
 
 output "pods_range_name" {

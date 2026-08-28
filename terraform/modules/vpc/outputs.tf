@@ -13,44 +13,54 @@ output "network_self_link" {
   value       = google_compute_network.vpc_network.self_link
 }
 
-output "subnet_id" {
-  description = "The identifier of the GKE worker node subnetwork"
-  value       = google_compute_subnetwork.gke_subnet.id
+output "public_subnet_id" {
+  description = "The identifier of the public subnetwork"
+  value       = google_compute_subnetwork.public_subnet.id
 }
 
-output "subnet_name" {
-  description = "The name of the GKE worker node subnetwork"
-  value       = google_compute_subnetwork.gke_subnet.name
+output "public_subnet_name" {
+  description = "The name of the public subnetwork"
+  value       = google_compute_subnetwork.public_subnet.name
 }
 
-output "subnet_self_link" {
-  description = "The URI of the GKE subnetwork"
-  value       = google_compute_subnetwork.gke_subnet.self_link
+output "public_subnet_cidr" {
+  description = "The primary IP CIDR block for the public subnetwork"
+  value       = google_compute_subnetwork.public_subnet.ip_cidr_range
 }
 
-output "subnet_cidr" {
-  description = "The primary IP CIDR block allocated for GKE worker nodes"
-  value       = google_compute_subnetwork.gke_subnet.ip_cidr_range
+output "private_subnet_id" {
+  description = "The identifier of the GKE worker node private subnetwork"
+  value       = google_compute_subnetwork.private_subnet.id
+}
+
+output "private_subnet_name" {
+  description = "The name of the GKE worker node private subnetwork"
+  value       = google_compute_subnetwork.private_subnet.name
+}
+
+output "private_subnet_cidr" {
+  description = "The primary IP CIDR block for GKE worker nodes private subnetwork"
+  value       = google_compute_subnetwork.private_subnet.ip_cidr_range
 }
 
 output "pods_range_name" {
   description = "The secondary range name for GKE Pods"
-  value       = google_compute_subnetwork.gke_subnet.secondary_ip_range[0].range_name
+  value       = google_compute_subnetwork.private_subnet.secondary_ip_range[0].range_name
 }
 
 output "pods_cidr" {
   description = "The secondary IP CIDR block allocated for GKE Pods"
-  value       = google_compute_subnetwork.gke_subnet.secondary_ip_range[0].ip_cidr_range
+  value       = google_compute_subnetwork.private_subnet.secondary_ip_range[0].ip_cidr_range
 }
 
 output "services_range_name" {
   description = "The secondary range name for GKE ClusterIP Services"
-  value       = google_compute_subnetwork.gke_subnet.secondary_ip_range[1].range_name
+  value       = google_compute_subnetwork.private_subnet.secondary_ip_range[1].range_name
 }
 
 output "services_cidr" {
   description = "The secondary IP CIDR block allocated for GKE Services"
-  value       = google_compute_subnetwork.gke_subnet.secondary_ip_range[1].ip_cidr_range
+  value       = google_compute_subnetwork.private_subnet.secondary_ip_range[1].ip_cidr_range
 }
 
 output "router_name" {
