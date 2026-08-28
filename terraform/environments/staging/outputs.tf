@@ -1,3 +1,4 @@
+# VPC Outputs
 output "vpc_network_id" {
   description = "The unique ID of the staging VPC network"
   value       = module.vpc.network_id
@@ -56,4 +57,46 @@ output "services_cidr" {
 output "nat_gateway_name" {
   description = "Name of the Cloud NAT gateway providing outbound internet access"
   value       = module.vpc.nat_gateway_name
+}
+
+# Cloud SQL Outputs
+output "cloudsql_instance_name" {
+  description = "Name of the Cloud SQL PostgreSQL instance"
+  value       = module.cloudsql.instance_name
+}
+
+output "cloudsql_instance_connection" {
+  description = "Connection name of the Cloud SQL PostgreSQL instance"
+  value       = module.cloudsql.instance_connection_name
+}
+
+output "cloudsql_private_ip" {
+  description = "Private IP address of the Cloud SQL instance"
+  value       = module.cloudsql.private_ip_address
+}
+
+output "cloudsql_db_name" {
+  description = "Application database name"
+  value       = module.cloudsql.db_name
+}
+
+output "cloudsql_db_user" {
+  description = "Application database user"
+  value       = module.cloudsql.db_user
+}
+
+output "cloudsql_secret_id" {
+  description = "Secret Manager secret ID for database credentials"
+  value       = module.cloudsql.secret_id
+}
+
+# Artifact Registry Outputs
+output "artifact_registry_repo_id" {
+  description = "Artifact Registry Docker repository ID"
+  value       = module.artifact_registry.repository_id
+}
+
+output "artifact_registry_repo_url" {
+  description = "Artifact Registry Docker base URL for pushing/pulling images"
+  value       = module.artifact_registry.repository_url
 }
