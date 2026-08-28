@@ -59,6 +59,16 @@ output "nat_gateway_name" {
   value       = module.vpc.nat_gateway_name
 }
 
+output "ingress_ip_name" {
+  description = "Name of the reserved static external IP for ingress"
+  value       = module.vpc.ingress_ip_name
+}
+
+output "ingress_ip_address" {
+  description = "Reserved static external IP address for frontend ingress"
+  value       = module.vpc.ingress_ip_address
+}
+
 # Cloud SQL Outputs
 output "cloudsql_instance_name" {
   description = "Name of the Cloud SQL PostgreSQL instance"

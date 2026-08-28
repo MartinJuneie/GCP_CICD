@@ -107,3 +107,10 @@ resource "google_compute_firewall" "allow_glbc_health_checks" {
     "130.211.0.0/22",
   ]
 }
+
+# Static external IP for Ingress Load Balancer
+resource "google_compute_global_address" "ingress_ip" {
+  name        = "ip-${var.environment}-ingress"
+  description = "Static external IP for frontend GKE ingress load balancer"
+  project     = var.project_id
+}

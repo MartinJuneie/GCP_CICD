@@ -72,3 +72,13 @@ output "nat_gateway_name" {
   description = "The name of the Cloud NAT gateway providing egress for private nodes"
   value       = google_compute_router_nat.nat_gateway.name
 }
+
+output "ingress_ip_name" {
+  description = "Name of the reserved static external IP for ingress"
+  value       = google_compute_global_address.ingress_ip.name
+}
+
+output "ingress_ip_address" {
+  description = "Reserved static external IP address for ingress"
+  value       = google_compute_global_address.ingress_ip.address
+}
