@@ -1,6 +1,9 @@
 name: Infrastructure Provisioning
 
 on:
+  push:
+    branches:
+      - setup
   workflow_dispatch:
     inputs:
       environment:
@@ -24,11 +27,11 @@ on:
 
 jobs:
   terraform:
-    name: Terraform (${{ inputs.environment }} - ${{ inputs.action }})
+    name: Terraform (${{ inputs.environment || 'staging' }} - ${{ inputs.action || 'validate' }})
     runs-on: ubuntu-latest
 
     env:
-      TF_WORKING_DIR: "terraform/environments/${{ inputs.environment }}"
+      TF_WORKING_DIR: "terraform/environments/${{ inputs.environment || 'staging' }}"
       GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
 
     steps:
