@@ -2,10 +2,65 @@ name: Infrastructure Provisioning
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment to provision'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+      action:
+        description: 'Terraform action'
+        required: true
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
 
 jobs:
-  infra:
+  terraform:
+    name: Terraform (${{ inputs.environment }})
     runs-on: ubuntu-latest
+
+    env:
+      TF_WORKING_DIR: "terraform/environments/${{ inputs.environment }}"
+      GOOGLE_CREDENTIALS: ${{ secrets.GCP_SA_KEY }}
+
     steps:
-      - name: Placeholder Step
-        run: echo "workflow in progress"
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: inputs.action == 'plan'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform destroy -auto-approve
