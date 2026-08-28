@@ -1,0 +1,11 @@
+name: Infrastructure Provisioning
+
+on:
+  workflow_dispatch:
+
+jobs:
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Placeholder Step
+        run: echo "workflow in progress"
