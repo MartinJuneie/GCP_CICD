@@ -1,6 +1,6 @@
 locals {
   instance_name = "psql-${var.region_short}-${var.project_id}-${var.environment}"
-  secret_name   = "sec-${var.region_short}-${var.project_id}-${var.environment}-db-credentials"
+  secret_name   = "sec-${var.environment}-db-credentials"
 }
 
 resource "random_id" "db_suffix" {
@@ -14,7 +14,7 @@ resource "random_password" "db_password" {
 
 # Reserve private IP range for VPC peering
 resource "google_compute_global_address" "private_ip_address" {
-  name          = "ga-${local.instance_name}-peering"
+  name          = "ga-${var.environment}-psql-peering"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
   prefix_length = 16

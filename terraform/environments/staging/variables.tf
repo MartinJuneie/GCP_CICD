@@ -9,7 +9,7 @@ variable "region" {
 }
 
 variable "region_short" {
-  description = "Shorthand code for the region"
+  description = "Shorthand code for the region (e.g., usc1)"
   type        = string
 }
 

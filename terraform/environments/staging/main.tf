@@ -60,3 +60,32 @@ module "artifact_registry" {
   repository_id = "test-app"
   description   = "Docker container registry for staging workloads"
 }
+
+module "iam" {
+  source                   = "../../modules/iam"
+  project_id               = var.project_id
+  environment              = var.environment
+  k8s_namespace            = "staging"
+  k8s_service_account_name = "test-app-sa"
+}
+
+module "gke" {
+  source                 = "../../modules/gke"
+  project_id             = var.project_id
+  region                 = var.region
+  region_short           = var.region_short
+  environment            = var.environment
+  network                = module.vpc.network_name
+  subnetwork             = module.vpc.private_subnet_name
+  pods_range_name        = module.vpc.pods_range_name
+  services_range_name    = module.vpc.services_range_name
+  master_ipv4_cidr_block = "172.16.0.0/28"
+  node_machine_type      = "e2-standard-2"
+  node_service_account   = module.iam.gke_node_service_account_email
+  min_node_count         = 1
+  max_node_count         = 3
+  initial_node_count     = 1
+  disk_size_gb           = 30
+
+  depends_on = [module.vpc, module.iam]
+}
