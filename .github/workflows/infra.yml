@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       environment:
-        description: 'Target environment to provision'
+        description: 'Target environment'
         required: true
         default: 'staging'
         type: choice
@@ -12,17 +12,19 @@ on:
           - staging
           - prod
       action:
-        description: 'Terraform action'
+        description: 'Terraform action to execute'
         required: true
+        default: 'validate'
         type: choice
         options:
+          - validate
           - plan
           - apply
           - destroy
 
 jobs:
   terraform:
-    name: Terraform (${{ inputs.environment }})
+    name: Terraform (${{ inputs.environment }} - ${{ inputs.action }})
     runs-on: ubuntu-latest
 
     env:
