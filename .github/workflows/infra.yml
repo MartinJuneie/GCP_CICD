@@ -12,7 +12,7 @@ on:
           - staging
           - prod
       action:
-        description: 'Terraform action to execute'
+        description: 'Terraform action'
         required: true
         default: 'validate'
         type: choice
@@ -48,9 +48,12 @@ jobs:
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform init -backend=false
 
-      - name: Terraform Validate
+      - name: Terraform Validate & Graph
         working-directory: ${{ env.TF_WORKING_DIR }}
-        run: terraform validate
+        run: |
+          terraform validate
+          echo "=== Terraform Resource Dependency Graph ==="
+          terraform graph
 
       - name: Terraform Plan
         if: inputs.action == 'plan'
