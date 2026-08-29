@@ -36,6 +36,7 @@ jobs:
       TF_WORKING_DIR: "terraform/environments/${{ inputs.environment }}"
       WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
       WIF_SA: ${{ secrets.GCP_WIF_SA }}
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
 
     steps:
       - name: Checkout Code
@@ -85,3 +86,24 @@ jobs:
         if: inputs.action == 'destroy'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -auto-approve
+
+      - name: Send Slack Failure Notification
+        if: failure() && env.SLACK_WEBHOOK != ''
+        env:
+          JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          ENV_NAME: ${{ inputs.environment }}
+          ACTION: ${{ inputs.action }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg repo "$REPO" \
+            --arg env_name "$ENV_NAME" \
+            --arg action "$ACTION" \
+            --arg actor "$ACTOR" \
+            --arg url "$JOB_URL" \
+            '{text: "*Terraform Pipeline Failed*\n• Repository: \($repo)\n• Environment: `\($env_name)`\n• Action: `\($action)`\n• Triggered by: @\($actor)\n• Job URL: \($url)"}')
+
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            "$SLACK_WEBHOOK" || echo "Slack notification sent or skipped"

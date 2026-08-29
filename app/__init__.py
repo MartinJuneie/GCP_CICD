@@ -1,1 +1,1 @@
-"""Integer Collector Application Package."""
+"""An Integer Collector Application Package."""
