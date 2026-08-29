@@ -65,7 +65,7 @@ module "iam" {
   source                   = "../../modules/iam"
   project_id               = var.project_id
   environment              = var.environment
-  k8s_namespace            = "staging"
+  k8s_namespace            = "app-stg"
   k8s_service_account_name = "test-app-sa"
 }
 
