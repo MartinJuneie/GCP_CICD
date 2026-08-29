@@ -46,6 +46,8 @@ jobs:
           flake8 app tests --max-line-length=120 --extend-ignore=E203,W503
 
       - name: Run Unit & Integration Tests with Coverage
+        env:
+          PYTHONPATH: .
         run: |
           pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml
 
