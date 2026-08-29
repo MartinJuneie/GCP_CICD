@@ -118,8 +118,10 @@ jobs:
       # - name: Push Scanned Image to Artifact Registry
       #   run: |
       #     docker tag test-app:local us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+      #     docker tag test-app:local us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.ref_name }}
       #     docker tag test-app:local us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
       #     docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+      #     docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.ref_name }}
       #     docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
 
   notify-on-failure:
@@ -138,19 +140,9 @@ jobs:
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          REPO: ${{ github.repository }}
-          BRANCH: ${{ github.ref_name }}
-          COMMIT: ${{ github.sha }}
-          ACTOR: ${{ github.actor }}
         run: |
-          PAYLOAD=$(jq -n \
-            --arg repo "$REPO" \
-            --arg branch "$BRANCH" \
-            --arg commit "$COMMIT" \
-            --arg actor "$ACTOR" \
-            --arg url "$JOB_URL" \
-            '{text: "*CI Pipeline Failed*\n• Repository: \($repo)\n• Branch: `\($branch)`\n• Commit: `\($commit)`\n• Author: @\($actor)\n• Job URL: \($url)"}')
-
-          curl -s -X POST -H 'Content-type: application/json' \
-            --data "$PAYLOAD" \
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚨 *CI Pipeline Failed*\n• *Repository:* '"${{ github.repository }}"'\n• *Branch:* `'"${{ github.ref_name }}"'`\n• *Commit:* `'"${{ github.sha }}"'`\n• *Author:* @'"${{ github.actor }}"'\n• *Job URL:* '"$JOB_URL"'"
+            }' \
             "$SLACK_WEBHOOK" || echo "Slack notification sent or skipped"
