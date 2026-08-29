@@ -132,3 +132,15 @@ jobs:
       - name: Print Failure Alert
         run: |
           echo "::error::[CI PIPELINE FAILED] One or more CI checks (linting, tests, or security scans) failed for branch '${{ github.ref_name }}'."
+
+      - name: Send Slack Failure Notification
+        if: env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+          JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{
+              "text": "🚨 *CI Pipeline Failed*\n• *Repository:* '"${{ github.repository }}"'\n• *Branch:* `'"${{ github.ref_name }}"'`\n• *Commit:* `'"${{ github.sha }}"'`\n• *Author:* @'"${{ github.actor }}"'\n• *Job URL:* '"$JOB_URL"'"
+            }' \
+            "$SLACK_WEBHOOK" || echo "Slack notification sent or skipped"
