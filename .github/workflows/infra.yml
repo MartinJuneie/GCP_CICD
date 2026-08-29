@@ -84,4 +84,3 @@ jobs:
         if: inputs.action == 'destroy'
         working-directory: ${{ env.TF_WORKING_DIR }}
         run: terraform destroy -auto-approve
-        run: terraform destroy -auto-approve
