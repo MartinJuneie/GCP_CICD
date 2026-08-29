@@ -1,10 +1,12 @@
-name: CI - Pull Request Verification & Build
+name: CI - Verification, Build & Tagging
 
 on:
   push:
     branches:
       - setup
       - main
+    tags:
+      - '*'
   pull_request:
     branches:
       - main
@@ -133,16 +135,28 @@ jobs:
     steps:
       - name: Print Failure Alert
         run: |
-          echo "::error::[CI PIPELINE FAILED] One or more CI checks (linting, tests, or security scans) failed for branch '${{ github.ref_name }}'."
+          echo "::error::[CI PIPELINE FAILED] One or more CI checks (linting, tests, or security scans) failed for ref '${{ github.ref_name }}'."
 
       - name: Send Slack Failure Notification
         if: env.SLACK_WEBHOOK != ''
         env:
           SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
           JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          COMMIT: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
         run: |
-          curl -X POST -H 'Content-type: application/json' \
-            --data '{
-              "text": "🚨 *CI Pipeline Failed*\n• *Repository:* '"${{ github.repository }}"'\n• *Branch:* `'"${{ github.ref_name }}"'`\n• *Commit:* `'"${{ github.sha }}"'`\n• *Author:* @'"${{ github.actor }}"'\n• *Job URL:* '"$JOB_URL"'"
-            }' \
+          PAYLOAD=$(jq -n \
+            --arg repo "$REPO" \
+            --arg ref_type "$REF_TYPE" \
+            --arg ref_name "$REF_NAME" \
+            --arg commit "$COMMIT" \
+            --arg actor "$ACTOR" \
+            --arg url "$JOB_URL" \
+            '{text: "*CI Pipeline Failed*\n• Repository: \($repo)\n• \($ref_type): `\($ref_name)`\n• Commit: `\($commit)`\n• Author: @\($actor)\n• Job URL: \($url)"}')
+
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
             "$SLACK_WEBHOOK" || echo "Slack notification sent or skipped"
