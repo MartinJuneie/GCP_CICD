@@ -13,13 +13,14 @@ venv/
 .venv/
 ENV/
 
-# Testing & Coverage
+# Testing, DB & Coverage
 .pytest_cache/
 .coverage
 .coverage.*
 htmlcov/
 *.xml
 *.db
+*.sqlite
 *.sqlite3
 
 # Terraform local files
@@ -39,4 +40,3 @@ override.tf.json
 .vscode/
 *.swp
 *.swo
-
