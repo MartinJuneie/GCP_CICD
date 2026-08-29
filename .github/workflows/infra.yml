@@ -1,4 +1,5 @@
-name: Infrastructure Provisioning
+name: Terraform
+run-name: Terraform - ${{ inputs.environment }} - ${{ inputs.action }}
 
 on:
   workflow_dispatch:
