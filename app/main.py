@@ -5,7 +5,7 @@ from typing import List
 from fastapi import FastAPI, Depends, Form, Request, status, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from sqlalchemy.orm import Session
 
 from app.database import get_db, init_db, check_db_health, NumberEntry
@@ -16,7 +16,6 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Auto-create tables on startup if not already created
     try:
         init_db()
     except Exception as e:
@@ -41,11 +40,9 @@ class NumberResponse(BaseModel):
     value: int
     created_at: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-# HTML UI: Render home page with list of numbers
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request, db: Session = Depends(get_db)):
     try:
@@ -53,11 +50,12 @@ def read_root(request: Request, db: Session = Depends(get_db)):
     except Exception:
         numbers = []
     return templates.TemplateResponse(
-        "index.html", {"request": request, "numbers": numbers}
+        request=request,
+        name="index.html",
+        context={"numbers": numbers},
     )
 
 
-# HTML UI: Handle Form POST submission
 @app.post("/", response_class=RedirectResponse)
 def submit_number_form(value: int = Form(...), db: Session = Depends(get_db)):
     entry = NumberEntry(value=value)
@@ -66,8 +64,11 @@ def submit_number_form(value: int = Form(...), db: Session = Depends(get_db)):
     return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
 
-# REST API: Create a new number entry
-@app.post("/api/numbers", response_model=NumberResponse, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/api/numbers",
+    response_model=NumberResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_number(payload: NumberCreate, db: Session = Depends(get_db)):
     entry = NumberEntry(value=payload.value)
     db.add(entry)
@@ -80,7 +81,6 @@ def create_number(payload: NumberCreate, db: Session = Depends(get_db)):
     }
 
 
-# REST API: List all number entries
 @app.get("/api/numbers", response_model=List[NumberResponse])
 def list_numbers(db: Session = Depends(get_db)):
     entries = db.query(NumberEntry).order_by(NumberEntry.id.desc()).all()
@@ -94,13 +94,11 @@ def list_numbers(db: Session = Depends(get_db)):
     ]
 
 
-# Kubernetes Liveness Probe
 @app.get("/healthz")
 def liveness_check():
     return {"status": "healthy"}
 
 
-# Kubernetes Readiness Probe
 @app.get("/readyz")
 def readiness_check():
     is_ready = check_db_health()
@@ -110,4 +108,3 @@ def readiness_check():
             detail={"status": "unready", "database": "disconnected"},
         )
     return {"status": "ready", "database": "connected"}
-

@@ -1,23 +1,20 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from app.main import app
 from app.database import Base, get_db
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./test_integration.db"
 engine = create_engine(
-    SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-
-@pytest.fixture(autouse=True)
-def setup_db():
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
+Base.metadata.create_all(bind=engine)
 
 
 def override_get_db():
@@ -32,12 +29,22 @@ app.dependency_overrides[get_db] = override_get_db
 client = TestClient(app)
 
 
+@pytest.fixture(autouse=True)
+def setup_and_clean_db():
+    Base.metadata.create_all(bind=engine)
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM numbers;"))
+    yield
+    with engine.begin() as conn:
+        conn.execute(text("DELETE FROM numbers;"))
+
+
 def test_full_crud_workflow():
     """Integration test: Insert numbers, retrieve via API, verify form submission."""
     # 1. Insert first integer via REST API
     res1 = client.post("/api/numbers", json={"value": 100})
     assert res1.status_code == 201
-    id1 = res1.json()["id"]
+    assert res1.json()["id"] > 0
 
     # 2. Insert second integer via Form POST
     res2 = client.post("/", data={"value": 200}, follow_redirects=True)
@@ -61,4 +68,3 @@ def test_full_crud_workflow():
     res5 = client.post("/api/numbers", json={"value": 0})
     assert res5.status_code == 201
     assert res5.json()["value"] == 0
-

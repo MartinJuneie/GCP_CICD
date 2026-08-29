@@ -19,6 +19,8 @@ ENV/
 .coverage.*
 htmlcov/
 *.xml
+*.db
+*.sqlite3
 
 # Terraform local files
 **/.terraform/
