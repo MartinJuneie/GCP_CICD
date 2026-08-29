@@ -40,18 +40,14 @@ def setup_and_clean_db():
 
 
 def test_full_crud_workflow():
-    """Integration test: Insert numbers, retrieve via API, verify form submission."""
-    # 1. Insert first integer via REST API
     res1 = client.post("/api/numbers", json={"value": 100})
     assert res1.status_code == 201
     assert res1.json()["id"] > 0
 
-    # 2. Insert second integer via Form POST
     res2 = client.post("/", data={"value": 200}, follow_redirects=True)
     assert res2.status_code == 200
     assert "200" in res2.text
 
-    # 3. Retrieve list via REST API
     res3 = client.get("/api/numbers")
     assert res3.status_code == 200
     items = res3.json()
@@ -60,7 +56,6 @@ def test_full_crud_workflow():
     assert 100 in values
     assert 200 in values
 
-    # 4. Verify negative numbers and zero work
     res4 = client.post("/api/numbers", json={"value": -50})
     assert res4.status_code == 201
     assert res4.json()["value"] == -50

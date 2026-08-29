@@ -3,7 +3,7 @@ locals {
   node_pool_name = "np-${var.region_short}-${var.environment}-primary"
 }
 
-# GKE Cluster Control Plane
+# GKE Cluster 
 resource "google_container_cluster" "primary" {
   name     = local.cluster_name
   location = var.region
@@ -58,7 +58,7 @@ resource "google_container_cluster" "primary" {
   }
 }
 
-# GKE Worker Node Pool
+# GKE Node Pool
 resource "google_container_node_pool" "primary_nodes" {
   name       = local.node_pool_name
   location   = var.region

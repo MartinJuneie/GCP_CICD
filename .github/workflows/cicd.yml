@@ -1,5 +1,5 @@
 name: CI/CD Pipeline
-run-name: CI/CD - PR #${{ github.event.pull_request.number || github.ref_name }}
+run-name: CI/CD - PR
 
 on:
   pull_request:
