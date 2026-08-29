@@ -1,0 +1,53 @@
+environment: prod
+
+replicaCount: 3
+
+image:
+  repository: us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: test-app-sa
+  gcpServiceAccount: sa-prod-app@gcp-cicd-prod.iam.gserviceaccount.com
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "gce"
+  staticIpName: "ip-prod-ingress"
+  path: /*
+  pathType: ImplementationSpecific
+
+backendConfig:
+  name: test-app-backend-config
+  logging:
+    enabled: true
+    sampleRate: 1.0
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /healthz
+    port: 8000
+
+database:
+  host: "10.10.1.5"
+  port: 5432
+  name: "app_prod_db"
+  user: "app_prod_user"
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
