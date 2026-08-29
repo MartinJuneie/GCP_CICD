@@ -1,0 +1,2 @@
+"""Integer Collector Application Package."""
+

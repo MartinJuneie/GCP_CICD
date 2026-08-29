@@ -1,0 +1,7 @@
+apiVersion: v2
+name: test-app
+description: Helm chart for deploying test-app on Google Kubernetes Engine
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
