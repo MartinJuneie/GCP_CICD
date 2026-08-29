@@ -1,0 +1,53 @@
+environment: staging
+
+replicaCount: 2
+
+image:
+  repository: us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: test-app-sa
+  gcpServiceAccount: sa-staging-app@gcp-cicd-staging.iam.gserviceaccount.com
+
+service:
+  type: ClusterIP
+  port: 8000
+  targetPort: 8000
+
+ingress:
+  enabled: true
+  className: "gce"
+  staticIpName: "ip-staging-ingress"
+  path: /*
+  pathType: ImplementationSpecific
+
+backendConfig:
+  name: test-app-backend-config
+  logging:
+    enabled: true
+    sampleRate: 1.0
+  healthCheck:
+    checkIntervalSec: 15
+    timeoutSec: 5
+    healthyThreshold: 1
+    unhealthyThreshold: 2
+    type: HTTP
+    requestPath: /healthz
+    port: 8000
+
+database:
+  host: "10.10.1.5"
+  port: 5432
+  name: "app_staging_db"
+  user: "app_staging_user"
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

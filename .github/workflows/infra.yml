@@ -1,11 +1,87 @@
-name: Infrastructure Provisioning
+name: Terraform
+run-name: Terraform - ${{ inputs.environment }} - ${{ inputs.action }}
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - prod
+      action:
+        description: 'Terraform action'
+        required: true
+        default: 'validate'
+        type: choice
+        options:
+          - validate
+          - plan
+          - apply
+          - destroy
+
+permissions:
+  contents: read
+  id-token: write
 
 jobs:
-  infra:
+  terraform:
+    name: Terraform (${{ inputs.environment }} - ${{ inputs.action }})
     runs-on: ubuntu-latest
+
+    env:
+      TF_WORKING_DIR: "terraform/environments/${{ inputs.environment }}"
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      WIF_SA: ${{ secrets.GCP_WIF_SA }}
+
     steps:
-      - name: Placeholder Step
-        run: echo "workflow in progress"
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to GCP via WIF
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SA }}
+
+      - name: Setup Terraform CLI
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init (Validation Mode)
+        if: inputs.action == 'validate'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init -backend=false
+
+      - name: Terraform Init (Live Mode)
+        if: inputs.action != 'validate'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: inputs.action == 'plan'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform plan
+
+      - name: Terraform Apply
+        if: inputs.action == 'apply'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform apply -auto-approve
+
+      - name: Terraform Destroy
+        if: inputs.action == 'destroy'
+        working-directory: ${{ env.TF_WORKING_DIR }}
+        run: terraform destroy -auto-approve
