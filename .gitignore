@@ -1,0 +1,42 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Testing, DB & Coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.xml
+*.db
+*.sqlite
+*.sqlite3
+
+# Terraform local files
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars.local
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# IDE / Editor files
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,295 @@
+name: CI/CD Pipeline
+run-name: CI/CD - PR #${{ github.event.pull_request.number || github.ref_name }}
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'app/**'
+      - 'tests/**'
+      - 'helm/**'
+
+permissions:
+  contents: write
+  id-token: write
+  pull-requests: write
+  security-events: write
+
+jobs:
+  build-and-test:
+    name: CI (Lint, Test, Scan & Build)
+    runs-on: ubuntu-latest
+    env:
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      WIF_SA: ${{ secrets.GCP_WIF_SA }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pip install -r tests/requirements-test.txt
+
+      - name: Code Formatting & Lint Check
+        run: |
+          black --check app tests
+          flake8 app tests --max-line-length=120 --extend-ignore=E203,W503
+
+      - name: Run Unit & Integration Tests with Coverage
+        env:
+          PYTHONPATH: .
+        run: |
+          pytest tests/ --cov=app --cov-report=term-missing --cov-report=xml
+
+      - name: Run Dependency Audit
+        run: |
+          pip install pip-audit
+          pip-audit -r app/requirements.txt
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Local Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: app/Dockerfile
+          push: false
+          load: true
+          tags: test-app:local
+
+      - name: Run Trivy Vulnerability Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: test-app:local
+          format: 'table'
+          exit-code: '0'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Authenticate to Google Cloud via WIF
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SA }}
+
+      - name: Configure Docker for Google Artifact Registry
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Push Scanned Image to Artifact Registry
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          docker tag test-app:local us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+
+  deploy-staging:
+    name: Deploy to Staging (GKE)
+    runs-on: ubuntu-latest
+    needs: [build-and-test]
+    environment:
+      name: staging
+    env:
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      WIF_SA: ${{ secrets.GCP_WIF_SA }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud via WIF
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SA }}
+
+      - name: Get GKE Credentials
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: gke-usc1-staging
+          location: us-central1
+          project_id: gcp-cicd-staging
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.3'
+
+      - name: Deploy Staging Helm Chart
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          helm upgrade --install test-app ./helm/test-app \
+            -f ./helm/test-app/values.yaml \
+            --set image.tag=${{ github.sha }} \
+            --namespace app-stg \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+
+  approve-production-promotion:
+    name: Production Approval Gate, Tag & Merge
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    environment:
+      name: production
+    outputs:
+      release_tag: ${{ steps.bump.outputs.new_tag }}
+    env:
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      WIF_SA: ${{ secrets.GCP_WIF_SA }}
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Approve and Merge Pull Request into Main
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr review ${{ github.event.pull_request.number }} --approve -b "Approved via Production Promotion Gate"
+          gh pr merge ${{ github.event.pull_request.number }} --merge
+
+      - name: Compute Next Semantic Version Tag
+        id: bump
+        run: |
+          git fetch --tags
+          LATEST_TAG=$(git tag -l "v[0-9]*.[0-9]*.[0-9]*" --sort=-v:refname | head -n 1)
+          if [ -z "$LATEST_TAG" ]; then
+            NEW_TAG="v1.0.0"
+          else
+            VERSION="${LATEST_TAG#v}"
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            PATCH=$(echo "$VERSION" | cut -d. -f3)
+            NEW_PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+          echo "Generated new tag: $NEW_TAG"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$NEW_TAG"
+          git push origin "$NEW_TAG"
+          echo "new_tag=$NEW_TAG" >> $GITHUB_OUTPUT
+
+      - name: Authenticate to Google Cloud via WIF
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SA }}
+
+      - name: Configure Docker for Google Artifact Registry
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
+
+      - name: Tag Existing Staging Image with Release Tag
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          NEW_TAG="${{ steps.bump.outputs.new_tag }}"
+          docker pull us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+          docker tag us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${NEW_TAG}
+          docker tag us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
+          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${NEW_TAG}
+          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
+
+  deploy-production:
+    name: Deploy to Production (GKE)
+    runs-on: ubuntu-latest
+    needs: [approve-production-promotion]
+    env:
+      WIF_PROVIDER: ${{ secrets.GCP_WIF_PROVIDER }}
+      WIF_SA: ${{ secrets.GCP_WIF_SA }}
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud via WIF
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_WIF_SA }}
+
+      - name: Get GKE Credentials
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: gke-usc1-prod
+          location: us-central1
+          project_id: gcp-cicd-prod
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: 'v3.14.3'
+
+      - name: Deploy Production Helm Chart
+        if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
+        run: |
+          RELEASE_TAG="${{ needs.approve-production-promotion.outputs.release_tag }}"
+          helm upgrade --install test-app ./helm/test-app \
+            -f ./helm/test-app/values-prod.yaml \
+            --set image.tag=${RELEASE_TAG} \
+            --namespace app-prd \
+            --create-namespace \
+            --wait \
+            --timeout 5m
+
+  notify-on-failure:
+    name: Failure Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-test, deploy-staging, approve-production-promotion, deploy-production]
+    if: failure()
+    env:
+      SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+    steps:
+      - name: Print Failure Alert
+        run: |
+          echo "::error::[CI/CD PIPELINE FAILED] One or more pipeline stages failed for ref '${{ github.ref_name }}'."
+
+      - name: Send Slack Failure Notification
+        if: env.SLACK_WEBHOOK != ''
+        env:
+          JOB_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          REPO: ${{ github.repository }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          COMMIT: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+        run: |
+          PAYLOAD=$(jq -n \
+            --arg repo "$REPO" \
+            --arg ref_type "$REF_TYPE" \
+            --arg ref_name "$REF_NAME" \
+            --arg commit "$COMMIT" \
+            --arg actor "$ACTOR" \
+            --arg url "$JOB_URL" \
+            '{text: "*CI/CD Pipeline Failed*\n• Repository: \($repo)\n• \($ref_type): `\($ref_name)`\n• Commit: `\($commit)`\n• Author: @\($actor)\n• Job URL: \($url)"}')
+
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data "$PAYLOAD" \
+            "$SLACK_WEBHOOK" || echo "Slack notification sent or skipped"
