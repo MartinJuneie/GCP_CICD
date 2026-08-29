@@ -148,11 +148,6 @@ jobs:
           COMMIT: ${{ github.sha }}
           ACTOR: ${{ github.actor }}
         run: |
-          if [ -z "$SLACK_WEBHOOK" ]; then
-            echo "SLACK_WEBHOOK_URL secret not set. Skipping notification."
-            exit 0
-          fi
-
           PAYLOAD=$(jq -n \
             --arg repo "$REPO" \
             --arg ref_type "$REF_TYPE" \
