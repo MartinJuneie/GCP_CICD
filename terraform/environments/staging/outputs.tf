@@ -137,3 +137,14 @@ output "app_service_account_email" {
   description = "Application Service Account email for Workload Identity"
   value       = module.iam.app_service_account_email
 }
+
+# Monitoring Outputs
+output "app_dashboard_id" {
+  description = "Resource ID of the application metrics dashboard"
+  value       = module.monitoring.app_dashboard_id
+}
+
+output "infra_dashboard_id" {
+  description = "Resource ID of the infrastructure and database metrics dashboard"
+  value       = module.monitoring.infra_dashboard_id
+}
