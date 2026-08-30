@@ -11,6 +11,7 @@ This repository contains the Terraform Infrastructure as Code (IaC), Kubernetes 
 - [CI/CD Workflows & Automation](#cicd-workflows--automation)
 - [Observability, Centralized Logging & Alerting](#observability-centralized-logging--alerting)
 - [Security, Secret Management & Backup Strategy](#security-secret-management--backup-strategy)
+- [Cost Optimization Measures](#cost-optimization-measures)
 
 ---
 
@@ -234,3 +235,20 @@ Configured exclusively in production (`enable_alerts = true`) with variable thre
 - **Point-in-Time Recovery (PITR)**: PostgreSQL Write-Ahead Logs (WAL) are retained for 7 days in Google Cloud-managed storage, allowing granular database recovery to any specific second.
 - **Regional High Availability**: Production runs cross-zone synchronous replication (`availability_type = "REGIONAL"`) with automatic failover.
 - **Deletion Protection**: Guarded with `deletion_protection = true` in Production.
+
+---
+
+## Cost Optimization Measures
+
+1. **Right-Sized Environment Sizing**:
+   - **Staging**: Configured with cost-effective `e2-standard-2` GKE worker nodes (1–3 autoscaling nodes) and single-zone `db-custom-1-3840` Cloud SQL instance (20GB storage).
+   - **Production**: Scales to `e2-standard-4` GKE worker nodes (2–5 autoscaling nodes) and Regional High Availability `db-custom-2-7680` Cloud SQL instance (50GB storage).
+2. **Horizontal Autoscaling**:
+   - GKE node pools scale dynamically based on demand; idle node compute is automatically decommissioned during low-traffic windows.
+3. **Centralized Container Storage**:
+   - Single shared Artifact Registry repository (`cicd-shared-gar-627e`) prevents duplicate container image storage charges and unnecessary cross-region network transfer fees.
+4. **Consolidated Cloud NAT Gateway**:
+   - A single Cloud NAT gateway handles outbound internet egress for all private cluster nodes, eliminating public IP address allocation costs on individual VMs.
+5. **Optimized Backup & WAL Retention**:
+   - Database disk backups and Point-in-Time Recovery WAL logs are capped at a 7-day retention window, balancing disaster recovery readiness with minimal cloud storage costs.
+
