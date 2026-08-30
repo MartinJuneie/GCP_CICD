@@ -112,40 +112,29 @@ All GCP resources are provisioned via modular Terraform code. Environments are d
 ---
 
 ## CI/CD Workflows & Automation
+
 ### 1. Application Continuous Delivery Pipeline (`.github/workflows/cicd.yml`)
 
 The application deployment pipeline executes automatically on Pull Requests targeting `main` (when changes touch `app/**`, `tests/**`, or `helm/**`) and runs as a single continuous delivery workflow:
 
 ```mermaid
 flowchart TD
-    subgraph Phase1 ["1. Continuous Integration (CI)"]
-        PR["Pull Request to main"] --> CI_Jobs["Lint, Test & Security Audit<br/>(Code Quality, Pytest, pip-audit)"]
-        CI_Jobs --> Container["Docker Build & Trivy Scan"]
-        Container --> Push["Push Image to Shared GAR<br/>(tag: commit SHA)"]
-    end
+    A["1. Pull Request Trigger<br/>Workflow initiates on Pull Request opened targeting main"]
+    --> B["2. Quality & Security Checks<br/>Executes linters, unit tests, code coverage & dependency audit"]
+    --> C["3. Container Build & Image Scan<br/>Builds container via Docker Buildx and scans layers with Trivy"]
+    --> D["4. Artifact Registry Publishing<br/>Authenticates via WIF and pushes image tagged with commit SHA"]
+    --> E["5. Staging Cluster Deployment<br/>Deploys Helm release to staging GKE namespace and verifies probes"]
+    --> F["6. Production Promotion Gate<br/>Awaits manual sign-off via GitHub Environment protection rule"]
+    --> G["7. Release Tagging & Image Promotion<br/>Merges Pull Request, creates SemVer release tag, and retags image"]
+    --> H["8. Production Cluster Deployment<br/>Deploys promoted Helm release to production GKE namespace"]
 
-    subgraph Phase2 ["2. Staging Deployment"]
-        Push --> DeployStg["Deploy Helm Chart<br/>Target: gke-usc1-staging (app-stg)"]
-    end
-
-    subgraph Phase3 ["3. Production Gate & Promotion"]
-        DeployStg --> Gate{"Manual Approval Gate<br/>(GitHub Environment: production)"}
-        Gate -->|Approved| Merge["Auto-Merge PR & Tag SemVer (vX.Y.Z)"]
-        Merge --> Retag["Retag Image in Shared GAR<br/>(tags: release tag, latest)"]
-    end
-
-    subgraph Phase4 ["4. Production Deployment"]
-        Retag --> DeployProd["Deploy Helm Chart<br/>Target: gke-usc1-prod (app-prd)"]
-    end
-
-    subgraph Phase5 ["5. Alerting"]
-        Slack["Slack Webhook Alert<br/>(on any job failure)"]
-    end
-
-    Phase1 -.->|on failure| Slack
-    Phase2 -.->|on failure| Slack
-    Phase3 -.->|on failure| Slack
-    Phase4 -.->|on failure| Slack
+    B -.->|On Failure| I["Failure Alert Notification<br/>Dispatches incident details to Slack webhook"]
+    C -.->|On Failure| I
+    D -.->|On Failure| I
+    E -.->|On Failure| I
+    F -.->|On Failure| I
+    G -.->|On Failure| I
+    H -.->|On Failure| I
 ```
 
 #### Pipeline Jobs:
@@ -178,28 +167,16 @@ The infrastructure workflow is triggered manually via **`workflow_dispatch`** in
 
 ```mermaid
 flowchart TD
-    subgraph Trigger ["1. Trigger & Authentication"]
-        Start["Manual workflow_dispatch<br/>(Inputs: environment, action)"] --> WIF["Authenticate via WIF & Setup Terraform (1.7.5)"]
-        WIF --> Fmt["Format Check<br/>(terraform fmt -check)"]
-    end
+    A["1. Workflow Dispatch<br/>Operator selects target environment and Terraform action"]
+    --> B["2. Google Cloud Authentication<br/>Authenticates runner via Workload Identity Federation"]
+    --> C["3. Terraform Setup & Format Check<br/>Initializes Terraform CLI and performs recursive format validation"]
+    --> D["4. Environment Initialization<br/>Initializes working directory and verifies configuration syntax"]
+    --> E["5. Action Execution<br/>Executes selected action: validate, plan, apply, or destroy"]
 
-    subgraph Execution ["2. Terraform Execution"]
-        Fmt --> Init["Terraform Init<br/>(-backend=false for validate | GCS Backend for others)"]
-        Init --> Validate["Terraform Validate"]
-        Validate --> ActionChoice{"Evaluate Action"}
-        
-        ActionChoice -->|validate| ValidPass["Validation Completed"]
-        ActionChoice -->|plan| Plan["terraform plan"]
-        ActionChoice -->|apply| Apply["terraform apply -auto-approve"]
-        ActionChoice -->|destroy| Destroy["terraform destroy -auto-approve"]
-    end
-
-    subgraph Alerting ["3. Alerting"]
-        Slack["Slack Webhook Alert<br/>(on any step failure)"]
-    end
-
-    Trigger -.->|on failure| Slack
-    Execution -.->|on failure| Slack
+    B -.->|On Failure| F["Failure Alert Notification<br/>Dispatches incident details to Slack webhook"]
+    C -.->|On Failure| F
+    D -.->|On Failure| F
+    E -.->|On Failure| F
 ```
 
 - **Inputs**:
@@ -253,7 +230,7 @@ Configured exclusively in production (`enable_alerts = true`) with variable thre
 - **Private Database Network**: Cloud SQL has `ipv4_enabled = false` and is accessible only through internal VPC peering.
 
 ### Backup and Disaster Recovery Strategy
-- **Automated Daily Backups**: Daily disk snapshots run at 02:00 UTC with a 7-day retention window.
-- **Point-in-Time Recovery (PITR)**: Write-Ahead Logs (WAL) are retained for 7 days, allowing restoration to any exact second.
+- **Automated Daily Backups**: Daily disk snapshots run automatically at 02:00 UTC with a 7-day retention window. Backups are stored in Google Cloud-managed regional object storage, physically separated from the database VM instance.
+- **Point-in-Time Recovery (PITR)**: PostgreSQL Write-Ahead Logs (WAL) are retained for 7 days in Google Cloud-managed storage, allowing granular database recovery to any specific second.
 - **Regional High Availability**: Production runs cross-zone synchronous replication (`availability_type = "REGIONAL"`) with automatic failover.
 - **Deletion Protection**: Guarded with `deletion_protection = true` in Production.
