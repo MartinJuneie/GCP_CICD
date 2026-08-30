@@ -3,7 +3,7 @@ environment: prod
 replicaCount: 3
 
 image:
-  repository: us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app
+  repository: us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app
   tag: "latest"
   pullPolicy: IfNotPresent
 

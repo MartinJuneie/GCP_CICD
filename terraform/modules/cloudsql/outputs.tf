@@ -29,8 +29,3 @@ output "db_password" {
   sensitive   = true
 }
 
-output "secret_id" {
-  description = "Secret Manager secret ID containing connection parameters"
-  value       = google_secret_manager_secret.db_credentials.id
-}
-
