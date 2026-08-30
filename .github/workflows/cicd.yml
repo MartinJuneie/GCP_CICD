@@ -93,8 +93,8 @@ jobs:
       - name: Push Scanned Image to Artifact Registry
         if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
         run: |
-          docker tag test-app:local us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
-          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
+          docker tag test-app:local us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${{ github.sha }}
+          docker push us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${{ github.sha }}
 
   deploy-staging:
     name: Deploy to Staging (GKE)
@@ -134,7 +134,7 @@ jobs:
         if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
         run: |
           helm upgrade --install test-app ./helm/test-app \
-            -f ./helm/test-app/values.yaml \
+            -f ./helm/test-app/values-staging.yaml \
             --set image.tag=${{ github.sha }} \
             --namespace app-stg \
             --create-namespace \
@@ -208,11 +208,11 @@ jobs:
         if: env.WIF_PROVIDER != '' && env.WIF_SA != ''
         run: |
           NEW_TAG="${{ steps.bump.outputs.new_tag }}"
-          docker pull us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }}
-          docker tag us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${NEW_TAG}
-          docker tag us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
-          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:${NEW_TAG}
-          docker push us-central1-docker.pkg.dev/gcp-cicd-staging/cr-usc1-test-app/test-app:latest
+          docker pull us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${{ github.sha }}
+          docker tag us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${NEW_TAG}
+          docker tag us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${{ github.sha }} us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:latest
+          docker push us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:${NEW_TAG}
+          docker push us-central1-docker.pkg.dev/cicd-shared-gar-627e/ar-usc1-test-app/test-app:latest
 
   deploy-production:
     name: Deploy to Production (GKE)

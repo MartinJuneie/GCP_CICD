@@ -102,3 +102,32 @@ resource "google_container_node_pool" "primary_nodes" {
     tags = ["gke-node", local.cluster_name]
   }
 }
+
+# Application Kubernetes Namespace
+resource "kubernetes_namespace" "app" {
+  metadata {
+    name = var.k8s_namespace
+  }
+
+  depends_on = [google_container_node_pool.primary_nodes]
+}
+
+# Kubernetes Secret for Database Credentials in Application Namespace
+resource "kubernetes_secret" "db_credentials" {
+  metadata {
+    name      = "db-credentials"
+    namespace = kubernetes_namespace.app.metadata[0].name
+  }
+
+  data = {
+    host     = var.db_host
+    port     = var.db_port
+    database = var.db_name
+    username = var.db_user
+    password = var.db_password
+  }
+
+  type = "Opaque"
+
+  depends_on = [kubernetes_namespace.app]
+}

@@ -15,8 +15,8 @@ cloudsql_db_name                = "app_staging_db"
 cloudsql_db_user                = "app_staging_user"
 cloudsql_deletion_protection    = false
 
-artifact_repository_id          = "test-app"
-artifact_repository_description = "Docker container registry for staging workloads"
+shared_artifact_registry_project_id = "cicd-shared-gar-627e"
+artifact_repository_id              = "ar-usc1-test-app"
 
 k8s_namespace                   = "app-stg"
 k8s_service_account_name        = "test-app-sa"

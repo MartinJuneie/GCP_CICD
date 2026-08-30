@@ -70,16 +70,16 @@ variable "cloudsql_deletion_protection" {
   default     = false
 }
 
-variable "artifact_repository_id" {
-  description = "Artifact Registry Docker repository ID"
+variable "shared_artifact_registry_project_id" {
+  description = "The shared GCP project ID hosting the pre-created Artifact Registry"
   type        = string
-  default     = "test-app"
+  default     = "cicd-shared-gar-627e"
 }
 
-variable "artifact_repository_description" {
-  description = "Artifact Registry description"
+variable "artifact_repository_id" {
+  description = "Pre-created Artifact Registry Docker repository ID in the shared project"
   type        = string
-  default     = "Docker container registry"
+  default     = "ar-usc1-test-app"
 }
 
 variable "k8s_namespace" {

@@ -10,6 +10,10 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6.0"
     }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.26.0"
+    }
   }
 
   backend "gcs" {
@@ -21,6 +25,14 @@ terraform {
 provider "google" {
   project = var.project_id
   region  = var.region
+}
+
+data "google_client_config" "default" {}
+
+provider "kubernetes" {
+  host                   = "https://${module.gke.cluster_endpoint}"
+  token                  = data.google_client_config.default.access_token
+  cluster_ca_certificate = base64decode(module.gke.ca_certificate)
 }
 
 module "vpc" {
@@ -52,21 +64,15 @@ module "cloudsql" {
   depends_on = [module.vpc]
 }
 
-module "artifact_registry" {
-  source        = "../../modules/artifact_registry"
-  project_id    = var.project_id
-  region        = var.region
-  region_short  = var.region_short
-  repository_id = var.artifact_repository_id
-  description   = var.artifact_repository_description
-}
-
 module "iam" {
-  source                   = "../../modules/iam"
-  project_id               = var.project_id
-  environment              = var.environment
-  k8s_namespace            = var.k8s_namespace
-  k8s_service_account_name = var.k8s_service_account_name
+  source                              = "../../modules/iam"
+  project_id                          = var.project_id
+  environment                         = var.environment
+  region                              = var.region
+  shared_artifact_registry_project_id = var.shared_artifact_registry_project_id
+  artifact_repository_id              = var.artifact_repository_id
+  k8s_namespace                       = var.k8s_namespace
+  k8s_service_account_name            = var.k8s_service_account_name
 }
 
 module "gke" {
@@ -86,8 +92,14 @@ module "gke" {
   max_node_count         = var.gke_max_node_count
   initial_node_count     = var.gke_initial_node_count
   disk_size_gb           = var.gke_disk_size_gb
+  k8s_namespace          = var.k8s_namespace
+  db_host                = module.cloudsql.private_ip_address
+  db_port                = "5432"
+  db_name                = module.cloudsql.db_name
+  db_user                = module.cloudsql.db_user
+  db_password            = module.cloudsql.db_password
 
-  depends_on = [module.vpc, module.iam]
+  depends_on = [module.vpc, module.iam, module.cloudsql]
 }
 
 module "monitoring" {

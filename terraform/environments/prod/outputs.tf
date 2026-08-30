@@ -95,20 +95,9 @@ output "cloudsql_db_user" {
   value       = module.cloudsql.db_user
 }
 
-output "cloudsql_secret_id" {
-  description = "Secret Manager secret ID for database credentials"
-  value       = module.cloudsql.secret_id
-}
-
-# Artifact Registry Outputs
-output "artifact_registry_repo_id" {
-  description = "Artifact Registry Docker repository ID"
-  value       = module.artifact_registry.repository_id
-}
-
-output "artifact_registry_repo_url" {
-  description = "Artifact Registry Docker base URL for pushing/pulling images"
-  value       = module.artifact_registry.repository_url
+output "k8s_db_secret_name" {
+  description = "Name of the Kubernetes Secret storing database credentials in the application namespace"
+  value       = module.gke.k8s_db_secret_name
 }
 
 # GKE Outputs

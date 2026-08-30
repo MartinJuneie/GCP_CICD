@@ -1,6 +1,5 @@
 locals {
   instance_name = "psql-${var.region_short}-${var.project_id}-${var.environment}"
-  secret_name   = "sec-${var.environment}-db-credentials"
 }
 
 resource "random_id" "db_suffix" {
@@ -95,26 +94,5 @@ resource "google_sql_user" "user" {
   instance = google_sql_database_instance.postgres.name
   password = random_password.db_password.result
   project  = var.project_id
-}
-
-# Secret Manager for database credentials
-resource "google_secret_manager_secret" "db_credentials" {
-  secret_id = local.secret_name
-  project   = var.project_id
-
-  replication {
-    auto {}
-  }
-}
-
-resource "google_secret_manager_secret_version" "db_credentials_version" {
-  secret = google_secret_manager_secret.db_credentials.id
-  secret_data = jsonencode({
-    host     = google_sql_database_instance.postgres.private_ip_address
-    port     = 5432
-    database = google_sql_database.db.name
-    username = google_sql_user.user.name
-    password = random_password.db_password.result
-  })
 }
 
