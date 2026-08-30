@@ -72,3 +72,39 @@ variable "disk_size_gb" {
   description = "Disk size in GB for worker nodes"
   type        = number
 }
+
+variable "k8s_namespace" {
+  description = "Kubernetes namespace for application workloads"
+  type        = string
+}
+
+variable "db_host" {
+  description = "PostgreSQL database host or private IP address"
+  type        = string
+  default     = ""
+}
+
+variable "db_port" {
+  description = "PostgreSQL database port"
+  type        = string
+  default     = "5432"
+}
+
+variable "db_name" {
+  description = "PostgreSQL database name"
+  type        = string
+  default     = ""
+}
+
+variable "db_user" {
+  description = "PostgreSQL database username"
+  type        = string
+  default     = ""
+}
+
+variable "db_password" {
+  description = "PostgreSQL database user password"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
